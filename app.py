@@ -18,7 +18,11 @@ st.write("Track, analyze, and get smart recommendations for your expenses using 
 load_dotenv()
 
 # If you want to store key in .env, add: GROQ_API_KEY=yourkey
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+api_key = os.getenv("GROQ_API_KEY")
+if not api_key:
+    st.error("❌ Groq API key not found! Please check your .env file.")
+else:
+    st.success("✅ Groq API key loaded successfully.")
 # Initialize Groq client
 client = Groq(api_key=GROQ_API_KEY)
 
