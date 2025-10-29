@@ -55,34 +55,73 @@ with st.sidebar.form("expense_form"):
 # -----------------------------
 # 🤖 Groq-based LLM Categorization
 # -----------------------------
-def analyze_with_llm(description, amount):
+if st.button("🔍 Analyze Spending with AI"):
+    text_summary = "\n".join([
+        f"{row['Description']} - {row['Amount']}" for _, row in df.iterrows()
+    ])
+
     prompt = f"""
-    You are an expert financial assistant. Categorize this expense based on the description and amount.
-    Possible categories: Food & Drink, Shopping, Bills, Transport, Entertainment, Others.
+    You are a personal finance assistant.
+    Analyze the following expenses and categorize each into one of these:
+    [Food & Drink, Shopping, Bills, Transport, Entertainment, Others].
 
-    Return a JSON object only with:
+    For each expense, return a JSON list with fields:
+    - description
     - category
-    - confidence (0.0–1.0)
+    - confidence (0 to 1)
 
-    Example output:
-    {{ "category": "Food & Drink", "confidence": 0.95 }}
+    Then provide a short text summary with recommendations for saving money.
 
-    Expense description: {description}
-    Amount: {amount}
+    Expenses:
+    {text_summary}
+
+    Respond strictly in JSON format as follows:
+    {{
+      "categorized_expenses": [
+        {{
+          "description": "...",
+          "category": "...",
+          "confidence": 0.9
+        }}
+      ],
+      "summary": "Your overall recommendation here."
+    }}
     """
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-        )
-        text = response.choices[0].message.content.strip()
-        data = json.loads(text)
-        return data.get("category", "Unknown"), data.get("confidence", 0.0)
-    except Exception as e:
-        st.error(f"LLM error: {e}")
-        return "Unknown", 0.0
+    with st.spinner("🔎 Analyzing with Groq LLM..."):
+        try:
+            completion = client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=400
+            )
+
+            import json
+            response_text = completion.choices[0].message.content.strip()
+
+            # Try parsing JSON safely
+            try:
+                data = json.loads(response_text)
+            except json.JSONDecodeError:
+                st.warning("⚠️ Model returned non-JSON text, showing raw output:")
+                st.write(response_text)
+                st.stop()
+
+            # Display categories
+            categorized = data.get("categorized_expenses", [])
+            if categorized:
+                st.subheader("📊 Categorized Expenses")
+                st.write(pd.DataFrame(categorized))
+            else:
+                st.info("No categorized data found.")
+
+            # Display summary
+            st.subheader("💡 AI Recommendations")
+            st.write(data.get("summary", "No summary found."))
+
+        except Exception as e:
+            st.error(f"LLM error: {e}")
 
 # -----------------------------
 # 📥 On Form Submission
