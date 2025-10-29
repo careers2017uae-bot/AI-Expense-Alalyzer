@@ -24,7 +24,7 @@ if not api_key:
 else:
     st.success("✅ Groq API key loaded successfully.")
 # Initialize Groq client
-client = Groq(api_key=GROQ_API_KEY)
+client = Groq(api_key=api_key)
 
 DATA_FILE = "expenses.csv"
 
